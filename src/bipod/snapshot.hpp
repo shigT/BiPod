@@ -15,10 +15,10 @@ class snapshot {
 	static_assert(sizeof(T) == 0, "Invalid template argument; excepted bipod::connection.");
 };
 
-template<class ResourceType, class... ReadPermissions, class... WritePermissions>
-class snapshot<bipod::connection<ResourceType, std::tuple<ReadPermissions...>, std::tuple<WritePermissions...>>> {
+template<class ResourceType, class... ReadPermissions, class... WritePermissions, class... ExecutePermissions>
+class snapshot<bipod::connection<ResourceType, std::tuple<ReadPermissions...>, std::tuple<WritePermissions...>, std::tuple<ExecutePermissions...>>> {
 	
-	using ConnectionType = bipod::connection<ResourceType, std::tuple<ReadPermissions...>, std::tuple<WritePermissions...>>;
+	using ConnectionType = bipod::connection<ResourceType, std::tuple<ReadPermissions...>, std::tuple<WritePermissions...>, std::tuple<ExecutePermissions...>>;
 	using inbox_t = std::tuple<ReadPermissions...>;
 	using outbox_t = std::tuple<WritePermissions...>;
 public:

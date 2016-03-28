@@ -30,6 +30,11 @@ public:
 		, remover_(*this)
 	{ }
 
+	template<class... Fields>
+	std::tuple<Fields...> Get() {
+		ipc::sharable_lock<ipc::named_sharable_mutex> lock(mutex_);
+		return std::make_tuple(GetField<Fields>()...);
+	}
 
 	template<class... Fields>
 	void Set(std::tuple<Fields...> val) {
@@ -38,12 +43,17 @@ public:
 	}
 
 	template<class... Fields>
-	std::tuple<Fields...> Get() {
-		ipc::sharable_lock<ipc::named_sharable_mutex> lock(mutex_);
-		return std::make_tuple(GetField<Fields>()...);
+	void Dispatch(std::function<void(const typename Fields::type*...)> func) {
+		ipc::scoped_lock<ipc::named_sharable_mutex> lock(mutex_);
+		func(segment_.find<typename Fields::type>(Fields::name).first...);
 	}
 
-	
+	template<class... Fields>
+	void Dispatch(std::function<void(typename Fields::type*...)> func) {
+		ipc::scoped_lock<ipc::named_sharable_mutex> lock(mutex_);
+		func(segment_.find_or_construct<typename Fields::type>(Fields::name)()...);
+	}
+
 private:
 	template <class Field>
 	Field GetField() {
