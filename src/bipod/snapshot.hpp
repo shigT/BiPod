@@ -30,12 +30,12 @@ public:
 		conn_.Set(outbox_);
 	}
 	
-	template<class Field>
+	template<class Field, class = typename std::enable_if<detail::is_in<Field, std::tuple<WritePermissions...>>::value>::type>
 	void Set(typename Field::type val) {
 		std::get<Field>(outbox_).value = optional<typename Field::type>(val);
 	}
 	
-	template<class Field>
+	template<class Field, class = typename std::enable_if<detail::is_in<Field, std::tuple<ReadPermissions...>>::value>::type>
 	optional<typename Field::type> Get() {
 		return std::get<Field>(inbox_).value;
 	}
