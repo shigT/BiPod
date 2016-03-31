@@ -25,7 +25,7 @@ class connection<ResourceType, std::tuple<ReadPermissions...>, std::tuple<WriteP
 
 public:
 	template<class... Args>
-	connection(Args... args) : resource_(args...) {}
+	connection(Args&&... args) : resource_(std::forward<Args>(args)...) {}
 
 	template<class... Fields, class = typename std::enable_if<detail::are_in<std::tuple<Fields...>, std::tuple<ReadPermissions...>>::value>::type>
 	std::tuple<Fields...> Get() {

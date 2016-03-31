@@ -3,31 +3,46 @@
 
 #include "detail/for_each_tuple.hpp"
 
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/named_sharable_mutex.hpp>
-
+#include <memory>
 
 namespace bipod {
 
-// tags
-struct remove_on_destruct_t {};
-struct leave_on_destruct_t {};
+// Tags
+struct remove_on_destruct_t {} remove_on_destruct;
+struct leave_on_destruct_t {} leave_on_destruct;
 
+// Remover
+
+struct remover_base {
+	virtual ~remover_base() = default;
+};
+template<class, class>
+struct remover;
 
 namespace ipc = boost::interprocess;
 
-template <class ManagedMemorySegment, class on_destruct>
+template <class ManagedMemorySegment>
 class ipc_managed_segment{
-	using ipc_managed_segment_instance_t = ipc_managed_segment<ManagedMemorySegment, on_destruct>;
+	template<class, class> friend struct remover;
+	using ipc_managed_segment_instance_t = ipc_managed_segment<ManagedMemorySegment>;
 	using Mutex = ipc::named_sharable_mutex;
 
 public:
+	
 	ipc_managed_segment(const std::string& name, size_t size)
+		: ipc_managed_segment(name, size, leave_on_destruct)
+	{ }
+	
+	template <class remover_policy_t>
+	ipc_managed_segment(const std::string& name, size_t size, remover_policy_t)
 		: segment_name_(std::string("bipod_ipc_managed_segment_").append(name))
 		, mutex_name_(std::string("bipod_ipc_mutex_").append(name))
 		, segment_(ipc::open_or_create, segment_name_.c_str(), size)
 		, mutex_(ipc::open_or_create, mutex_name_.c_str())
-		, remover_(*this)
+		, remover_(std::make_unique<remover<ManagedMemorySegment, remover_policy_t>>(*this))
 	{ }
 
 	template<class... Fields>
@@ -79,33 +94,35 @@ private:
 		}
 	};
 
-
-private:
 	const std::string segment_name_;
 	const std::string mutex_name_;
 	ManagedMemorySegment segment_;
 	Mutex mutex_;
 	
-	template<class Segment, class tag>
-	struct remover {
-		remover(ipc_managed_segment_instance_t&) {}
-	};
-
-	template<>
-	struct remover<ipc::managed_shared_memory, remove_on_destruct_t> {
-		remover(ipc_managed_segment_instance_t& parent) : parent_(parent) {}
-		~remover() {
-			ipc::shared_memory_object::remove(parent_.segment_name_.c_str());
-			parent_.mutex_.remove(parent_.mutex_name_.c_str());
-		}
-	private:
-		ipc_managed_segment_instance_t& parent_;
-	};
-
-	remover<ManagedMemorySegment, on_destruct> remover_;
-	
+	std::unique_ptr<remover_base> remover_;
 };
 
+
+
+template<>
+struct remover<ipc::managed_shared_memory, leave_on_destruct_t> : public remover_base{
+	remover(ipc_managed_segment<ipc::managed_shared_memory>&) {	}
+	~remover() = default;
+};
+
+template<>
+struct remover<ipc::managed_shared_memory, remove_on_destruct_t> : public remover_base{
+	remover(ipc_managed_segment<ipc::managed_shared_memory>& p) : parent_(p){ }
+	~remover() {
+		ipc::shared_memory_object::remove(parent_.segment_name_.c_str());
+		parent_.mutex_.remove(parent_.mutex_name_.c_str());
+	}
+	ipc_managed_segment<ipc::managed_shared_memory>& parent_;
+};
+
+
 } // end namespace bipod
+
+
 
 #endif //BIPOD_IPC_MANAGED_SEGMENT_HPP
