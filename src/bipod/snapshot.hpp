@@ -41,10 +41,9 @@ public:
 	}
 	
 private:
-	ConnectionType& const conn_;
+	ConnectionType& conn_;
 	const inbox_t inbox_;
 	outbox_t outbox_;
-	
 };
 
 } // end namespace bipod
