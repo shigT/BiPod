@@ -48,20 +48,6 @@ public:
 		}
 		return boost::none;
 	}
-
-	/*
-	template<class Field, class = typename std::enable_if<detail::is_in<Field, std::tuple<ReadPermissions...>>::value>::type>
-	optional<typename Field::type> Get() {
-		return std::get<Field>(inbox_).value;
-	}
-
-	
-	template<class... Fields, class = typename std::enable_if<(sizeof...(Fields) > 1) && detail::are_in<std::tuple<Fields...>, std::tuple<ReadPermissions...>>::value>::type>
-	optional<std::tuple<Fields...>> Get() {
-		return boost::none;
-	}
-	*/
-	
 	
 private:
 	ConnectionType& conn_;
